@@ -9,10 +9,12 @@ from typing import List
 import psutil
 import win32gui
 import win32process
+from dataclasses_json import dataclass_json
 from PIL import Image, ImageGrab
 from pystray import Icon, Menu, MenuItem
 
 
+@dataclass_json
 @dataclass
 class AgsConfig:
     # delay in seconds
@@ -25,7 +27,7 @@ class AgsConfig:
     ignored_exes: List[str] = field(default_factory=lambda: ["steam.exe"])
 
 
-config = AgsConfig()
+config = AgsConfig.from_json(open("./config.json", "r").read())
 
 
 def should_screenshot(hwnd) -> bool:
