@@ -51,7 +51,7 @@ def screenshot(hwnd):
     path = Path(config.folder).joinpath(date)
     path.mkdir(parents=True, exist_ok=True)
 
-    img_time = datetime.datetime.now().strftime("%H-%M-%S")
+    img_time = datetime.datetime.now().strftime("%H.%M.%S")
     window_name = win32gui.GetWindowText(hwnd)
     window_name = re.sub(r'[\\/*?:"<>|]', "", window_name)
 
@@ -97,7 +97,8 @@ icon = Icon(
     "icon",
     icon=Image.open("icon.png"),
     menu=Menu(
-        MenuItem("Exit", lambda: asyncio.run_coroutine_threadsafe(stop(), event_loop))
+        MenuItem("Exit", lambda: asyncio.run_coroutine_threadsafe(
+            stop(), event_loop))
     ),
 )
 icon.run_detached()
