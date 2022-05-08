@@ -63,12 +63,16 @@ def screenshot(hwnd):
 async def background_loop():
     while True:
         hwnd = win32gui.GetForegroundWindow()
+        while not should_screenshot(hwnd):
+            await asyncio.sleep(3)
+            hwnd = win32gui.GetForegroundWindow()
         try:
-            if should_screenshot(hwnd):
+            while should_screenshot(hwnd):
                 screenshot(hwnd)
+                await asyncio.sleep(config.delay)
+                hwnd = win32gui.GetForegroundWindow()
         except Exception as e:
             print(f"Error: {e}")
-        await asyncio.sleep(config.delay)
 
 
 background_task = None
