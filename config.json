@@ -1,7 +1,18 @@
 {
-  "delay": 300,
-  "quality": 80,
-  "folder": ".\\Screenshots",
-  "additional_exes": [],
-  "ignored_exes": []
+    "delay": 3,
+    "quality": 80,
+    "folder": "./Screenshots",
+    "dll_patterns": [
+        "xinput",
+        "game",
+        "gaming",
+        "steam",
+        "dinput8"
+    ],
+    "additional_exes": [],
+    "ignored_exes": [
+        "steam.exe",
+        "xboxpcapp.exe",
+        "explorer.exe"
+    ]
 }

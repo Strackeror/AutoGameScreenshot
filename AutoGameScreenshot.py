@@ -1,20 +1,18 @@
 import asyncio
 import datetime
+import json
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import List
 
 import psutil
 import win32gui
 import win32process
-from dataclasses_json import dataclass_json
 from PIL import Image, ImageGrab
 from pystray import Icon, Menu, MenuItem
 
 
-@dataclass_json
 @dataclass
 class AgsConfig:
     # delay in seconds
@@ -23,24 +21,67 @@ class AgsConfig:
 
     folder: str = "./Screenshots"
 
-    additional_exes: List[str] = field(default_factory=lambda: [])
-    ignored_exes: List[str] = field(default_factory=lambda: ["steam.exe"])
+    dll_patterns: list[str] = field(
+        default_factory=lambda: ["xinput", "game", "steam", "gaming", "dinput8"]
+    )
+    additional_exes: list[str] = field(default_factory=lambda: [])
+    ignored_exes: list[str] = field(
+        default_factory=lambda: ["steam.exe", "xboxpcapp.exe", "explorer.exe"]
+    )
 
 
-config = AgsConfig.from_json(open("./config.json", "r").read())
+config = AgsConfig()
+with open("./config.json", "r+") as configFile:
+    config = AgsConfig(**json.loads(configFile.read() or "{}"))
+
+with open("./config.json", "w") as configFile:
+    configFile.write(json.dumps(asdict(config), indent=4))
+
+
+def get_dlls(hwnd) -> list[str]:
+    child_windows = []
+    win32gui.EnumChildWindows(hwnd, lambda h, _: child_windows.append(h), None)
+
+    dlls = set()
+    window_handles = [hwnd, *child_windows]
+    for handle in window_handles:
+        (_, pid) = win32process.GetWindowThreadProcessId(handle)
+        process = psutil.Process(pid)
+        for dll in process.memory_maps():
+            dlls.add(os.path.basename(dll.path))
+    return sorted([*dlls])
+
+
+def get_process_names(hwnd) -> list[str]:
+    child_windows = []
+    win32gui.EnumChildWindows(hwnd, lambda h, _: child_windows.append(h), None)
+
+    names = set()
+    window_handles = [hwnd, *child_windows]
+    for handle in window_handles:
+        (_, pid) = win32process.GetWindowThreadProcessId(handle)
+        process = psutil.Process(pid)
+        names.add(process.name())
+    return [*names]
 
 
 def should_screenshot(hwnd) -> bool:
-    (tid, pid) = win32process.GetWindowThreadProcessId(hwnd)
-    process = psutil.Process(pid)
-    dlls = [os.path.basename(dll.path) for dll in process.memory_maps()]
-    dlls = sorted(dlls)
+    names = get_process_names(hwnd)
+    for name in names:
+        for ignored in config.ignored_exes:
+            if re.search(ignored, name, re.IGNORECASE):
+                return False
+        for additional in config.additional_exes:
+            if re.search(additional, name, re.IGNORECASE):
+                return True
 
-    if process.name() in config.additional_exes:
-        return True
-    if process.name() in config.ignored_exes:
-        return False
-    return any("xinput" in dll for dll in dlls)
+    dlls = get_dlls(hwnd)
+    for dll in dlls:
+        for dll_pattern in config.dll_patterns:
+            if re.search(dll_pattern, dll, re.IGNORECASE):
+                print(f"matched {dll_pattern} in {dll}")
+                return True
+    return False
 
 
 def screenshot(hwnd):
@@ -63,6 +104,7 @@ def screenshot(hwnd):
 async def background_loop():
     while True:
         try:
+            await asyncio.sleep(3)
             hwnd = win32gui.GetForegroundWindow()
             while not should_screenshot(hwnd):
                 await asyncio.sleep(3)
@@ -72,7 +114,7 @@ async def background_loop():
                 await asyncio.sleep(config.delay)
                 hwnd = win32gui.GetForegroundWindow()
         except Exception as e:
-            print(f"Error {e}")
+            print(f"Error {e}, {e.with_traceback(None)}")
 
 
 background_task = None
@@ -101,8 +143,7 @@ icon = Icon(
     "icon",
     icon=Image.open("icon.png"),
     menu=Menu(
-        MenuItem("Exit", lambda: asyncio.run_coroutine_threadsafe(
-            stop(), event_loop))
+        MenuItem("Exit", lambda: asyncio.run_coroutine_threadsafe(stop(), event_loop))
     ),
 )
 icon.run_detached()
