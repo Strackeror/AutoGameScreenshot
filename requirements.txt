@@ -1,0 +1,4 @@
+Pillow==9.2.0
+pywin32==304
+pystray==0.19.4
+psutil==5.9.2
