@@ -12,6 +12,7 @@
     "additional_exes": [],
     "ignored_exes": [
         "steam.exe",
+        "steamwebhelper.exe",
         "xboxpcapp.exe",
         "explorer.exe"
     ]
