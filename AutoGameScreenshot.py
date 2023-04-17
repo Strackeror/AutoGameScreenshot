@@ -6,10 +6,11 @@ import re
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
+import dxcam
 import psutil
 import win32gui
 import win32process
-from PIL import Image, ImageGrab
+from PIL import Image
 from pystray import Icon, Menu, MenuItem
 
 
@@ -37,6 +38,7 @@ with open("./config.json", "r+") as configFile:
 with open("./config.json", "w") as configFile:
     configFile.write(json.dumps(asdict(config), indent=4))
 
+cam = dxcam.create()
 
 def get_dlls(hwnd) -> list[str]:
     child_windows = []
@@ -86,7 +88,9 @@ def should_screenshot(hwnd) -> bool:
 
 def screenshot(hwnd):
     x, y, x1, y1 = win32gui.GetWindowRect(hwnd)
-    img = ImageGrab.grab((x, y, x1, y1), all_screens=True)
+    frame = cam.grab(region=(x,y,x1,y1))
+    print(frame)
+    img = Image.fromarray(frame)
 
     date = datetime.date.today().isoformat()
     path = Path(config.folder).joinpath(date)
